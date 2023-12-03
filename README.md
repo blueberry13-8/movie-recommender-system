@@ -32,7 +32,7 @@ pip install pandas
 ```
 
 ```console
-pip install torch --index-url https://download.pytorch.org/whl/cu11
+pip install torch --index-url https://download.pytorch.org/whl/cu118
 ```
 
 ```console
