@@ -1,5 +1,10 @@
 # Movie Recommender System with use of GNN
 
+## Student information
+* Name: Viktor Kovalev
+* Innopolis email: vi.kovalev@innopolis.university
+* Group: BS21-DS-02
+
 ## Navigator
  [Instalation](#instalation)
 
