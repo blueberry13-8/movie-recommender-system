@@ -28,7 +28,11 @@ python -m venv .venv
 3. Install dependencies
 
 ```console
-pip install torch pandas
+pip install pandas
+```
+
+```console
+pip install torch --index-url https://download.pytorch.org/whl/cu11
 ```
 
 ```console
