@@ -181,3 +181,20 @@ These metrics collectively form a comprehensive picture of the model's performan
 
 # Results
 
+The training process yielded a satisfactory result, with the loss converging to approximately 0.08. While the loss is a fundamental metric for training optimization, it's complemented by additional evaluation metrics.
+
+![loss](figures/loss.png)
+
+The precision metric achieved a value of 0.2421, indicating the model's accuracy in recommending relevant items. Additionally, the recall metric reached 0.3623, reflecting the model's effectiveness in capturing a substantial portion of relevant items.
+
+![metrics](figures/metrics.png)
+
+Examining the model's predictions for a specific user provides a tangible illustration of its capabilities.
+
+![user1](figures/user_4.png)
+
+Furthermore, exploring movies watched by a user that the model was not aware of showcases areas for potential improvement and opportunities to enhance recommendation coverage.
+
+![user](figures/user_4_test.png)
+
+These visualizations and metrics collectively provide insights into the model's performance, offering a comprehensive overview of its recommendation accuracy and highlighting areas for refinement in future iterations.
