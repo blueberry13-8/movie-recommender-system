@@ -3,27 +3,6 @@ import torch
 import pandas as pd
 
 
-def compute_bpr_loss(users_emb, pos_emb, neg_emb, device):
-    """
-    Compute BPR loss.
-
-    Args:
-        users_emb (torch.Tensor): Embeddings for users.
-        pos_emb (torch.Tensor): Embeddings for positive items.
-        neg_emb (torch.Tensor): Embeddings for negative items.
-
-    Returns:
-        BPR loss.
-    """
-    # Compute BPR loss
-    pos_scores = torch.mul(users_emb, pos_emb).sum(dim=1)
-    neg_scores = torch.mul(users_emb, neg_emb).sum(dim=1)
-
-    bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores))
-
-    return bpr_loss
-
-
 def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_data, test_data, K, device):
     # Get unique user IDs from the test set
     test_user_ids = torch.LongTensor(test_data['user_id_idx'].unique())
@@ -64,3 +43,98 @@ def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_data, te
     metrics_df['precision'] = metrics_df.apply(lambda x: len(x['intrsctn_itm']) / K, axis=1)
 
     return metrics_df['recall'].mean(), metrics_df['precision'].mean()
+
+
+
+def get_top_k_movies(user_id, user_Embed_wts, item_Embed_wts, K):
+    """
+    Get the top K movie indexes for a given user.
+
+    Args:
+        user_id (int): The user ID for which to get top K movies.
+        user_Embed_wts (torch.Tensor): Embeddings for users.
+        item_Embed_wts (torch.Tensor): Embeddings for items.
+        K (int): Number of top movies to retrieve.
+
+    Returns:
+        list: Top K movie indexes for the given user.
+    """
+    # Compute the score of all user-item pairs
+    user_scores = user_Embed_wts[user_id] @ item_Embed_wts.t()
+
+    # Get the top K movie indexes
+    topk_movie_indexes = torch.topk(user_scores, K).indices.cpu().numpy().tolist()
+
+    return topk_movie_indexes
+
+def get_metrics_for_user(user_Embed_wts, item_Embed_wts, n_users, n_items, train_data, test_data, user_id, K):
+    """
+    Compute recall and precision metrics for a given user.
+
+    Args:
+        user_Embed_wts (torch.Tensor): Embeddings for users.
+        item_Embed_wts (torch.Tensor): Embeddings for items.
+        n_users (int): Number of unique users.
+        n_items (int): Number of unique items.
+        train_data (pd.DataFrame): Training data.
+        test_data (pd.DataFrame): Testing data.
+        user_id (int): User ID for which to compute metrics.
+        K (int): Number of top movies to consider for metrics.
+
+    Returns:
+        Tuple: Recall and Precision metrics.
+    """
+    # Get unique user IDs from the test set
+    test_user_ids = torch.LongTensor(test_data['user_id_idx'].unique())
+
+    # Compute the score of all user-item pairs
+    relevance_score = torch.matmul(user_Embed_wts, torch.transpose(item_Embed_wts, 0, 1))
+
+    # Create a dense tensor of all user-item interactions
+    i = torch.stack((
+        torch.LongTensor(train_data['user_id_idx'].values),
+        torch.LongTensor(train_data['item_id_idx'].values)
+    ))
+    v = torch.ones((len(train_data)), dtype=torch.float64)
+    interactions_t = torch.sparse_coo_tensor(i, v, (n_users, n_items), device=user_Embed_wts.device).to_dense()
+
+    # Mask out training user-item interactions from metric computation
+    relevance_score = torch.mul(relevance_score, (1 - interactions_t))
+
+    # Get the top K movies for the specified user
+    top_k_movies = get_top_k_movies(user_id, user_Embed_wts, item_Embed_wts, K)
+
+    # Measure overlap between recommended (top-scoring) and held-out user-item interactions
+    test_user_data = test_data[test_data['user_id_idx'] == user_id]
+    test_interacted_items = set(test_user_data['item_id_idx'].values)
+    intersection_items = set(top_k_movies) & test_interacted_items
+
+    # Compute recall and precision
+    recall = len(intersection_items) / len(test_interacted_items) if len(test_interacted_items) > 0 else 0.0
+    precision = len(intersection_items) / K
+
+    return recall, precision
+
+def get_movie_names_for_user(user_id, user_Embed_wts, item_Embed_wts, items, genres, K):
+    """
+    Get the names of the top K recommended movies for a given user.
+
+    Args:
+        user_id (int): User ID for which to get movie names.
+        user_Embed_wts (torch.Tensor): Embeddings for users.
+        item_Embed_wts (torch.Tensor): Embeddings for items.
+        items (pd.DataFrame): DataFrame containing movie information.
+        genres (pd.DataFrame): DataFrame containing genre information.
+        K (int): Number of top movies to retrieve.
+
+    Returns:
+        list: Names of the top K recommended movies for the given user.
+    """
+    # Get the top K movie indexes for the user
+    top_k_movies = get_top_k_movies(user_id, user_Embed_wts, item_Embed_wts, K)
+
+    # Get movie names corresponding to the top K movie indexes
+    top_k_movie_names = items.loc[top_k_movies, 'movieName'].tolist()
+
+    return top_k_movie_names
+
